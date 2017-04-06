@@ -1,0 +1,5 @@
+Install :
+Copy the  'domelist SkyRoof.txt'' file to the "Common/Miscellaneous Files" directory inside of TheSkyX Pro.
+Copy libSkyRoof.dll to the "Common/PlugIns/DomePlugIns" directory inside of TheSkyX Pro.
+
+
