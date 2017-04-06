@@ -297,7 +297,7 @@ int CSkyRoof::gotoAzimuth(double newAz)
 int CSkyRoof::openShutter()
 {
     int err = RoR_OK;
-
+    int status;
     char resp[SERIAL_BUFFER_SIZE];
 
     if (bDebugLog) {
@@ -311,6 +311,20 @@ int CSkyRoof::openShutter()
             mLogger->out(mLogBuffer);
         }
         return NOT_CONNECTED;
+    }
+
+    // get the AtPArk status
+    err = getAtParkStatus(status);
+    if(err)
+        return err;
+
+    // we can't move the roof if we're not parked
+    if (status != PARKED) {
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] Not parked, not moving the roof");
+            mLogger->out(mLogBuffer);
+        }
+        return ERR_CMDFAILED;
     }
 
     err = domeCommand("Open#\r", resp, SERIAL_BUFFER_SIZE);
@@ -327,6 +341,7 @@ int CSkyRoof::openShutter()
 int CSkyRoof::closeShutter()
 {
     int err = RoR_OK;
+    int status;
     char resp[SERIAL_BUFFER_SIZE];
 
     if (bDebugLog) {
@@ -340,6 +355,20 @@ int CSkyRoof::closeShutter()
             mLogger->out(mLogBuffer);
         }
         return NOT_CONNECTED;
+    }
+
+    // get the AtPArk status
+    err = getAtParkStatus(status);
+    if(err)
+        return err;
+
+    // we can't move the roof if we're not parked
+    if (status != PARKED) {
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] Not parked, not moving the roof");
+            mLogger->out(mLogBuffer);
+        }
+        return ERR_CMDFAILED;
     }
 
     err = domeCommand("Close#\r", resp, SERIAL_BUFFER_SIZE);
