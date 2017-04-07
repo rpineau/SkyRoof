@@ -126,7 +126,7 @@ int CSkyRoof::readResponse(char *respBuffer, unsigned int bufferLen)
             break;
         }
         totalBytesRead += nBytesRead;
-    } while (*bufPtr++ != '#' && totalBytesRead < bufferLen );
+    } while (*bufPtr++ != 0x0d && totalBytesRead < bufferLen ); // \r
 
     *bufPtr = 0; //remove the \r
     return err;
@@ -313,7 +313,7 @@ int CSkyRoof::openShutter()
         return NOT_CONNECTED;
     }
 
-    // get the AtPArk status
+    // get the AtPark status
     err = getAtParkStatus(status);
     if(err)
         return err;
@@ -357,7 +357,7 @@ int CSkyRoof::closeShutter()
         return NOT_CONNECTED;
     }
 
-    // get the AtPArk status
+    // get the AtPark status
     err = getAtParkStatus(status);
     if(err)
         return err;

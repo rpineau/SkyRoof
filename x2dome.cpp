@@ -134,7 +134,7 @@ int X2Dome::execModalSettingsDialog()
     if(m_bLinked) {
         dx->setEnabled("dewHeaterOnOff",false);
         dx->setEnabled("pushButton",false);
-        // get AtPArk Status
+        // get AtPark Status
         AtParkStatus = SkyRoof.getCurrentParkStatus();
         // set the field
         if(AtParkStatus == PARKED){
