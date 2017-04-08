@@ -19,11 +19,15 @@ fi
 
 cp "./domelist SkyRoof.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
 cp "./libSkyRoof.so" "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/"
+cp "./SkyRoof.ui" "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/"
+cp "./SkyRoof.png" "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/"
 
 app_owner=`/usr/bin/stat -c "%u" "$TheSkyX_Path" | xargs id -n -u`
 if [ ! -z "$app_owner" ]; then
 	chown $app_owner "$TheSkyX_Path/Resources/Common/Miscellaneous Files/domelist SkyRoof.txt"
 	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/libSkyRoof.so"
+	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/SkyRoof.ui"
+	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/SkyRoof.png"
 fi
 chmod  755 "$TheSkyX_Path/Resources/Common/PlugInsARM32/DomePlugIns/libSkyRoof.so"
 
