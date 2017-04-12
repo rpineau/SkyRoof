@@ -17,7 +17,7 @@
 CSkyRoof::CSkyRoof()
 {
     // set some sane values
-    bDebugLog = true;
+    bDebugLog = false;
 
     pSerx = NULL;
     bIsConnected = false;
@@ -331,7 +331,8 @@ int CSkyRoof::openShutter()
         }
         return ERR_CMDFAILED;
     }
-
+    mSleeper->sleep(1000);
+    
     err = domeCommand("Open#\r", resp, SERIAL_BUFFER_SIZE);
     if(err)
         return err;
@@ -340,6 +341,7 @@ int CSkyRoof::openShutter()
         err = ERR_CMDFAILED;
     }
 
+    mSleeper->sleep(1000);
     return err;
 }
 
@@ -367,6 +369,8 @@ int CSkyRoof::closeShutter()
     if(err)
         return err;
 
+    mSleeper->sleep(1000);
+
     // we can't move the roof if we're not parked
     if (status != PARKED) {
         if (bDebugLog) {
@@ -383,6 +387,7 @@ int CSkyRoof::closeShutter()
     if(!strstr(resp,"0#")) {
         err = ERR_CMDFAILED;
     }
+    mSleeper->sleep(1000);
 
     return err;
 }
@@ -445,6 +450,8 @@ int CSkyRoof::isCloseComplete(bool &complete)
         mLogger->out(mLogBuffer);
     }
 
+    mSleeper->sleep(1000);
+
     err = getShutterState(mShutterState);
     if(err)
         return ERR_CMDFAILED;
@@ -463,6 +470,7 @@ int CSkyRoof::isCloseComplete(bool &complete)
         complete = false;
         mCurrentElPosition = 90.0;
     }
+    mSleeper->sleep(1000);
 
     return err;
 }
