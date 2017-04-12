@@ -305,38 +305,21 @@ int X2Dome::dapiClose(void)
 
 int X2Dome::dapiPark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.closeShutter();
-    if(err)
-        return ERR_CMDFAILED;
-
-    err = SkyRoof.parkDome();
-    if(err)
-        return ERR_CMDFAILED;
 
 	return SB_OK;
 }
 
 int X2Dome::dapiUnpark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
-
-    err = SkyRoof.openShutter();
-    if(err)
-        return ERR_CMDFAILED;
-
-    err = SkyRoof.unparkDome();
-    if(err)
-        return ERR_CMDFAILED;
 
 	return SB_OK;
 }
