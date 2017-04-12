@@ -448,8 +448,6 @@ int CSkyRoof::isCloseComplete(bool &complete)
         mLogger->out(mLogBuffer);
     }
 
-    mSleeper->sleep(1000);
-
     err = getShutterState(mShutterState);
     if(err)
         return ERR_CMDFAILED;
@@ -468,7 +466,6 @@ int CSkyRoof::isCloseComplete(bool &complete)
         complete = false;
         mCurrentElPosition = 90.0;
     }
-    mSleeper->sleep(1000);
 
     return err;
 }
