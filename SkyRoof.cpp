@@ -41,7 +41,6 @@ CSkyRoof::~CSkyRoof()
 int CSkyRoof::Connect(const char *szPort)
 {
     int err;
-    char resp[SERIAL_BUFFER_SIZE];
 
     if (bDebugLog) {
         snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::CSkyRoof] Starting log for version 1.0");
