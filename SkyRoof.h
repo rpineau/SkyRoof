@@ -15,9 +15,9 @@
 #include "../../licensedinterfaces/sleeperinterface.h"
 
 #define SERIAL_BUFFER_SIZE 256
-#define MAX_TIMEOUT 500
+#define MAX_TIMEOUT 5000
 #define ND_LOG_BUFFER_SIZE 256
-
+#define CMD_DELAY   750
 // error codes
 enum SkyRoofErrors {RoR_OK=0, NOT_CONNECTED, RoR_CANT_CONNECT, RoR_BAD_CMD_RESPONSE, COMMAND_FAILED};
 
