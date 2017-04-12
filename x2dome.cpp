@@ -305,7 +305,6 @@ int X2Dome::dapiClose(void)
 
 int X2Dome::dapiPark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
@@ -317,7 +316,6 @@ int X2Dome::dapiPark(void)
 
 int X2Dome::dapiUnpark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)

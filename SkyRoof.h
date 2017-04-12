@@ -15,7 +15,7 @@
 #include "../../licensedinterfaces/sleeperinterface.h"
 
 #define SERIAL_BUFFER_SIZE 256
-#define MAX_TIMEOUT 5000
+#define MAX_TIMEOUT 500
 #define ND_LOG_BUFFER_SIZE 256
 #define CMD_DELAY   750
 // error codes
