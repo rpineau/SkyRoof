@@ -17,7 +17,7 @@
 CSkyRoof::CSkyRoof()
 {
     // set some sane values
-    bDebugLog = false;
+    bDebugLog = true;
 
     pSerx = NULL;
     bIsConnected = false;
@@ -41,6 +41,7 @@ CSkyRoof::~CSkyRoof()
 int CSkyRoof::Connect(const char *szPort)
 {
     int err;
+    char resp[SERIAL_BUFFER_SIZE];
 
     if (bDebugLog) {
         snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::CSkyRoof] Starting log for version 1.0");
@@ -61,6 +62,8 @@ int CSkyRoof::Connect(const char *szPort)
     if(!bIsConnected)
         return ERR_COMMNOLINK;
 
+    mSleeper->sleep(2000);
+    
     if (bDebugLog) {
         snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Connected.");
         mLogger->out(mLogBuffer);
@@ -122,6 +125,8 @@ int CSkyRoof::readResponse(char *respBuffer, unsigned int bufferLen)
             if (bDebugLog) {
                 snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile Timeout while getting response.");
                 mLogger->out(mLogBuffer);
+                snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] nBytesRead = %lu", nBytesRead);
+                mLogger->out(mLogBuffer);
             }
             break;
         }
@@ -158,7 +163,7 @@ int CSkyRoof::domeCommand(const char *cmd, char *result, int resultMaxLen)
         return err;
 
     if(result)
-        strncpy(result, &resp[1], resultMaxLen);
+        strncpy(result, resp, resultMaxLen);
 
     return err;
 
@@ -574,22 +579,21 @@ int CSkyRoof::getAtParkStatus(int &status)
     int err = RoR_OK;
     char resp[SERIAL_BUFFER_SIZE];
 
-
     if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand]");
+        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus]");
         mLogger->out(mLogBuffer);
     }
 
     if(!bIsConnected) {
         if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] NOT CONNECTED !!!!");
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] NOT CONNECTED !!!!");
             mLogger->out(mLogBuffer);
         }
         return NOT_CONNECTED;
     }
 
     if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] Sending abort command.");
+        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] Sending Parkstatus command.");
         mLogger->out(mLogBuffer);
     }
 
@@ -597,12 +601,19 @@ int CSkyRoof::getAtParkStatus(int &status)
     if(err)
         return err;
 
-    if(!strstr(resp,"closed=0#")) {
+    if(strstr(resp,"0#")) {
         status = PARKED; //Parked
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] PARKED.");
+            mLogger->out(mLogBuffer);
+        }
     }
     else {
         status = UNPARKED; //Parked
-
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] UNPARKED.");
+            mLogger->out(mLogBuffer);
+        }
     }
     return err;
 }
