@@ -30,6 +30,8 @@ CSkyRoof::CSkyRoof()
     mShutterOpened = false;
     mShutterState = UNKNOWN;
 
+    mDewHeaterOn = false;
+    
     memset(mLogBuffer,0,ND_LOG_BUFFER_SIZE);
 }
 
@@ -152,17 +154,19 @@ int CSkyRoof::domeCommand(const char *cmd, char *result, int resultMaxLen)
     pSerx->flushTx();
     if(err)
         return err;
-    err = readResponse(resp, SERIAL_BUFFER_SIZE);
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", resp);
-        mLogger->out(mLogBuffer);
-    }
 
-    if(err)
-        return err;
-
-    if(result)
+    // only read the response if we expect a response.
+    if(result) {
+        err = readResponse(resp, SERIAL_BUFFER_SIZE);
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", resp);
+            mLogger->out(mLogBuffer);
+        }
+        
+        if(err)
+            return err;
         strncpy(result, resp, resultMaxLen);
+    }
 
     return err;
 
@@ -541,6 +545,46 @@ int CSkyRoof::abortCurrentCommand()
     return err;
 }
 
+
+int CSkyRoof::enableDewHeater(bool enable)
+{
+    int err = RoR_OK;
+    char resp[SERIAL_BUFFER_SIZE];
+    
+    if (bDebugLog) {
+        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater]");
+        mLogger->out(mLogBuffer);
+    }
+    
+    if(!bIsConnected) {
+        if (bDebugLog) {
+            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater] NOT CONNECTED !!!!");
+            mLogger->out(mLogBuffer);
+        }
+        return NOT_CONNECTED;
+    }
+    
+    if (bDebugLog) {
+        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater] Sending dew heater command.");
+        mLogger->out(mLogBuffer);
+    }
+    
+    mSleeper->sleep(CMD_DELAY);
+    if(enable) {
+        err = domeCommand("HeaterOn#\r", NULL, SERIAL_BUFFER_SIZE);
+    }
+    else {
+        err = domeCommand("HeaterOff#\r", NULL, SERIAL_BUFFER_SIZE);
+    }
+    if(err)
+        return err;
+
+    mDewHeaterOn = enable;
+
+    return err;
+  
+}
+
 #pragma mark - Getter / Setter
 
 
@@ -620,4 +664,9 @@ int CSkyRoof::getAtParkStatus(int &status)
         }
     }
     return err;
+}
+
+bool CSkyRoof::getDewHeaterStatus()
+{
+    return mDewHeaterOn;
 }

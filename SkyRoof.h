@@ -65,6 +65,9 @@ public:
     int getCurrentParkStatus();
     void setDebugLog(bool enable);
 
+    int enableDewHeater(bool enable);
+    bool getDewHeaterStatus();
+    
 protected:
 
     int             readResponse(char *respBuffer, unsigned int bufferLen);
@@ -90,7 +93,8 @@ protected:
 
     int             mShutterState;
     int             mAtParkStatus;
-
+    bool            mDewHeaterOn;
+    
     char            mLogBuffer[ND_LOG_BUFFER_SIZE];
 };
 

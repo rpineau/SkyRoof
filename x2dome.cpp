@@ -119,7 +119,8 @@ int X2Dome::execModalSettingsDialog()
     bool bPressedOK = false;
     char tmpBuf[SERIAL_BUFFER_SIZE];
     int AtParkStatus;
-
+    bool dewHeaterOn;
+    
     if (NULL == ui)
         return ERR_POINTER;
 
@@ -132,8 +133,8 @@ int X2Dome::execModalSettingsDialog()
     memset(tmpBuf,0,SERIAL_BUFFER_SIZE);
 
     if(m_bLinked) {
-        dx->setEnabled("dewHeaterOnOff",false);
-        dx->setEnabled("pushButton",false);
+        dx->setEnabled("dewHeaterOnOff",true);
+        dx->setEnabled("pushButton",true);
         // get AtPark Status
         AtParkStatus = SkyRoof.getCurrentParkStatus();
         // set the field
@@ -144,10 +145,12 @@ int X2Dome::execModalSettingsDialog()
         else {
             snprintf(tmpBuf,16,"Unparked");
             dx->setPropertyString("AtParkStatus","text", tmpBuf);
-
         }
-        snprintf(tmpBuf,16,"NA");
-        dx->setPropertyString("AtParkStatus","text", tmpBuf);
+        dewHeaterOn = SkyRoof.getDewHeaterStatus();
+        if (dewHeaterOn)
+            dx->setChecked("dewHeaterOnOff", true);
+        else
+            dx->setChecked("dewHeaterOnOff", false);
     }
     else {
         dx->setEnabled("dewHeaterOnOff",false);
@@ -167,12 +170,22 @@ int X2Dome::execModalSettingsDialog()
 
 void X2Dome::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
 {
-
+    bool dewHeaterOn;
     if (!strcmp(pszEvent, "on_timer"))
     {
         mDewHeaterState = uiex->isChecked("dewHeaterOnOff");
         if(m_bLinked) {
+            dewHeaterOn = SkyRoof.getDewHeaterStatus();
+            if(mDewHeaterState) {
+                if(!dewHeaterOn)
+                    SkyRoof.enableDewHeater(true);
             }
+            else {
+                if(dewHeaterOn)
+                    SkyRoof.enableDewHeater(false);
+            }
+        }
+
     }
 }
 

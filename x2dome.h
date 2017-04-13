@@ -143,6 +143,6 @@ private:
 	bool        m_bLinked;
     CSkyRoof    SkyRoof;
     char        mLogBuffer[LOG_BUFFER_SIZE];
-    bool        mDewHeaterState;
+    int        mDewHeaterState;
 
 };
