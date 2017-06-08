@@ -35,9 +35,9 @@ X2Dome::X2Dome(const char* pszSelection,
 	m_pTickCount					= pTickCount;
 
 	m_bLinked = false;
-    SkyRoof.SetSerxPointer(pSerX);
-    SkyRoof.setLogger(pLogger);
-    SkyRoof.setSleeper(pSleeper);
+    m_SkyRoof.SetSerxPointer(pSerX);
+    m_SkyRoof.setLogger(pLogger);
+    m_SkyRoof.setSleeper(pSleeper);
 }
 
 
@@ -63,25 +63,25 @@ X2Dome::~X2Dome()
 
 int X2Dome::establishLink(void)
 {
-    int err;
+    int nErr;
     char szPort[DRIVER_MAX_STRING];
 
     X2MutexLocker ml(GetMutex());
     // get serial port device name
     portNameOnToCharPtr(szPort,DRIVER_MAX_STRING);
-    err = SkyRoof.Connect(szPort);
-    if(err)
+    nErr =m_SkyRoof.Connect(szPort);
+    if(nErr)
         m_bLinked = false;
     else
         m_bLinked = true;
 
-	return err;
+	return nErr;
 }
 
 int X2Dome::terminateLink(void)
 {
     X2MutexLocker ml(GetMutex());
-    SkyRoof.Disconnect();
+    m_SkyRoof.Disconnect();
 	m_bLinked = false;
 	return SB_OK;
 }
@@ -112,53 +112,56 @@ int X2Dome::queryAbstraction(const char* pszName, void** ppVal)
 
 int X2Dome::execModalSettingsDialog()
 {
-    int nErr = SB_OK;
+    int nErr =SB_OK;
     X2ModalUIUtil uiutil(this, GetTheSkyXFacadeForDrivers());
     X2GUIInterface*					ui = uiutil.X2UI();
     X2GUIExchangeInterface*			dx = NULL;//Comes after ui is loaded
     bool bPressedOK = false;
-    char tmpBuf[SERIAL_BUFFER_SIZE];
-    int AtParkStatus;
-
+    char szTmpBuf[SERIAL_BUFFER_SIZE];
+    int	 nAtParkStatus;
+    bool bDewHeaterOn;
+    
     if (NULL == ui)
         return ERR_POINTER;
 
-    if ((nErr = ui->loadUserInterface("SkyRoof.ui", deviceType(), m_nPrivateISIndex)))
+    if ((nErr =ui->loadUserInterface("SkyRoof.ui", deviceType(), m_nPrivateISIndex)))
         return nErr;
 
     if (NULL == (dx = uiutil.X2DX()))
         return ERR_POINTER;
 
-    memset(tmpBuf,0,SERIAL_BUFFER_SIZE);
+    memset(szTmpBuf,0,SERIAL_BUFFER_SIZE);
 
     if(m_bLinked) {
-        dx->setEnabled("dewHeaterOnOff",false);
-        dx->setEnabled("pushButton",false);
+        dx->setEnabled("dewHeaterOnOff",true);
+        dx->setEnabled("pushButton",true);
         // get AtPark Status
-        AtParkStatus = SkyRoof.getCurrentParkStatus();
+        nAtParkStatus = m_SkyRoof.getCurrentParkStatus();
         // set the field
-        if(AtParkStatus == PARKED){
-            snprintf(tmpBuf,16,"Parked");
-            dx->setPropertyString("AtParkStatus","text", tmpBuf);
+        if(nAtParkStatus == PARKED){
+            snprintf(szTmpBuf,16,"Parked");
+            dx->setPropertyString("AtParkStatus","text", szTmpBuf);
         }
         else {
-            snprintf(tmpBuf,16,"Unparked");
-            dx->setPropertyString("AtParkStatus","text", tmpBuf);
-
+            snprintf(szTmpBuf,16,"Unparked");
+            dx->setPropertyString("AtParkStatus","text", szTmpBuf);
         }
-        snprintf(tmpBuf,16,"NA");
-        dx->setPropertyString("AtParkStatus","text", tmpBuf);
+        bDewHeaterOn = m_SkyRoof.getDewHeaterStatus();
+        if (bDewHeaterOn)
+            dx->setChecked("dewHeaterOnOff", true);
+        else
+            dx->setChecked("dewHeaterOnOff", false);
     }
     else {
         dx->setEnabled("dewHeaterOnOff",false);
-        snprintf(tmpBuf,16,"NA");
-        dx->setPropertyString("AtParkStatus","text", tmpBuf);
+        snprintf(szTmpBuf,16,"NA");
+        dx->setPropertyString("AtParkStatus","text", szTmpBuf);
         dx->setEnabled("pushButton",false);
     }
     X2MutexLocker ml(GetMutex());
 
     //Display the user interface
-    if ((nErr = ui->exec(bPressedOK)))
+    if ((nErr =ui->exec(bPressedOK)))
         return nErr;
 
     return nErr;
@@ -167,12 +170,22 @@ int X2Dome::execModalSettingsDialog()
 
 void X2Dome::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
 {
-
+    bool bDewHeaterOn;
     if (!strcmp(pszEvent, "on_timer"))
     {
-        mDewHeaterState = uiex->isChecked("dewHeaterOnOff");
+        m_nDewHeaterState = uiex->isChecked("dewHeaterOnOff");
         if(m_bLinked) {
+            bDewHeaterOn = m_SkyRoof.getDewHeaterStatus();
+            if(m_nDewHeaterState) {
+                if(!bDewHeaterOn)
+                    m_SkyRoof.enableDewHeater(true);
             }
+            else {
+                if(bDewHeaterOn)
+                    m_SkyRoof.enableDewHeater(false);
+            }
+        }
+
     }
 }
 
@@ -233,22 +246,22 @@ int X2Dome::dapiGetAzEl(double* pdAz, double* pdEl)
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    *pdAz = SkyRoof.getCurrentAz();
-    *pdEl = SkyRoof.getCurrentEl();
+    *pdAz = m_SkyRoof.getCurrentAz();
+    *pdEl = m_SkyRoof.getCurrentEl();
     return SB_OK;
 }
 
 int X2Dome::dapiGotoAzEl(double dAz, double dEl)
 {
-    int err;
+    int nErr;
 
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.gotoAzimuth(dAz);
-    if(err)
+    nErr =m_SkyRoof.gotoAzimuth(dAz);
+    if(nErr)
         return ERR_CMDFAILED;
 
     else
@@ -263,13 +276,13 @@ int X2Dome::dapiAbort(void)
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    SkyRoof.abortCurrentCommand();
+    m_SkyRoof.abortCurrentCommand();
 	return SB_OK;
 }
 
 int X2Dome::dapiOpen(void)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked) {
@@ -278,8 +291,8 @@ int X2Dome::dapiOpen(void)
         return ERR_NOLINK;
     }
 
-    err = SkyRoof.openShutter();
-    if(err)
+    nErr =m_SkyRoof.openShutter();
+    if(nErr)
         return ERR_CMDFAILED;
 
 	return SB_OK;
@@ -287,7 +300,7 @@ int X2Dome::dapiOpen(void)
 
 int X2Dome::dapiClose(void)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked) {
@@ -296,8 +309,8 @@ int X2Dome::dapiClose(void)
         return ERR_NOLINK;
     }
 
-    err = SkyRoof.closeShutter();
-    if(err)
+    nErr =m_SkyRoof.closeShutter();
+    if(nErr)
         return ERR_CMDFAILED;
 
 	return SB_OK;
@@ -305,7 +318,6 @@ int X2Dome::dapiClose(void)
 
 int X2Dome::dapiPark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
@@ -317,7 +329,6 @@ int X2Dome::dapiPark(void)
 
 int X2Dome::dapiUnpark(void)
 {
-    int err;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
@@ -338,28 +349,28 @@ int X2Dome::dapiFindHome(void)
 
 int X2Dome::dapiIsGotoComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isGoToComplete(*pbComplete);
-    if(err)
+    nErr =m_SkyRoof.isGoToComplete(*pbComplete);
+    if(nErr)
         return ERR_CMDFAILED;
     return SB_OK;
 }
 
 int X2Dome::dapiIsOpenComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isOpenComplete(*pbComplete);
-    if(err) {
+    nErr =m_SkyRoof.isOpenComplete(*pbComplete);
+    if(nErr) {
         return ERR_CMDFAILED;
     }
     return SB_OK;
@@ -367,14 +378,14 @@ int X2Dome::dapiIsOpenComplete(bool* pbComplete)
 
 int	X2Dome::dapiIsCloseComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isCloseComplete(*pbComplete);
-    if(err) {
+    nErr =m_SkyRoof.isCloseComplete(*pbComplete);
+    if(nErr) {
         return ERR_CMDFAILED;
     }
     return SB_OK;
@@ -382,14 +393,14 @@ int	X2Dome::dapiIsCloseComplete(bool* pbComplete)
 
 int X2Dome::dapiIsParkComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isParkComplete(*pbComplete);
-    if(err)
+    nErr =m_SkyRoof.isParkComplete(*pbComplete);
+    if(nErr)
         return ERR_CMDFAILED;
 
     return SB_OK;
@@ -397,14 +408,14 @@ int X2Dome::dapiIsParkComplete(bool* pbComplete)
 
 int X2Dome::dapiIsUnparkComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isUnparkComplete(*pbComplete);
-    if(err)
+    nErr =m_SkyRoof.isUnparkComplete(*pbComplete);
+    if(nErr)
         return ERR_CMDFAILED;
 
     return SB_OK;
@@ -412,14 +423,14 @@ int X2Dome::dapiIsUnparkComplete(bool* pbComplete)
 
 int X2Dome::dapiIsFindHomeComplete(bool* pbComplete)
 {
-    int err;
+    int nErr;
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.isFindHomeComplete(*pbComplete);
-    if(err)
+    nErr =m_SkyRoof.isFindHomeComplete(*pbComplete);
+    if(nErr)
         return ERR_CMDFAILED;
 
     return SB_OK;
@@ -427,15 +438,15 @@ int X2Dome::dapiIsFindHomeComplete(bool* pbComplete)
 
 int X2Dome::dapiSync(double dAz, double dEl)
 {
-    int err;
+    int nErr;
 
     X2MutexLocker ml(GetMutex());
 
     if(!m_bLinked)
         return ERR_NOLINK;
 
-    err = SkyRoof.syncDome(dAz, dEl);
-    if (err)
+    nErr =m_SkyRoof.syncDome(dAz, dEl);
+    if(nErr)
         return ERR_CMDFAILED;
 	return SB_OK;
 }
@@ -455,10 +466,10 @@ void X2Dome::portName(BasicStringInterface& str) const
 
 }
 
-void X2Dome::setPortName(const char* szPort)
+void X2Dome::setPortName(const char* pszPort)
 {
     if (m_pIniUtil)
-        m_pIniUtil->writeString(PARENT_KEY, CHILD_KEY_PORTNAME, szPort);
+        m_pIniUtil->writeString(PARENT_KEY, CHILD_KEY_PORTNAME, pszPort);
 
 }
 

@@ -17,20 +17,22 @@
 CSkyRoof::CSkyRoof()
 {
     // set some sane values
-    bDebugLog = false;
+    m_bDebugLog = false;
 
-    pSerx = NULL;
-    bIsConnected = false;
-
-
-    mCurrentAzPosition = 0.0;
-    mCurrentElPosition = 0.0;
+    m_pSerx = NULL;
+    m_bIsConnected = false;
 
 
-    mShutterOpened = false;
-    mShutterState = UNKNOWN;
+    m_dCurrentAzPosition = 0.0;
+    m_dCurrentElPosition = 0.0;
 
-    memset(mLogBuffer,0,ND_LOG_BUFFER_SIZE);
+
+    m_bShutterOpened = false;
+    m_nShutterState = UNKNOWN;
+
+    m_bDewHeaterOn = false;
+    
+    memset(m_szLogBuffer,0,ND_LOG_BUFFER_SIZE);
 }
 
 CSkyRoof::~CSkyRoof()
@@ -38,53 +40,53 @@ CSkyRoof::~CSkyRoof()
 
 }
 
-int CSkyRoof::Connect(const char *szPort)
+int CSkyRoof::Connect(const char *pszPort)
 {
-    int err;
+    int nErr;
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::CSkyRoof] Starting log for version 1.0");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::CSkyRoof] Starting log for version 1.0");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Trying to connect to %s.", szPort);
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Trying to connect to %s.", pszPort);
+        m_pLogger->out(m_szLogBuffer);
     }
 
     // 9600 8N1
-    if(pSerx->open(szPort, 9600, SerXInterface::B_NOPARITY, "-DTR_CONTROL 1") == 0)
-        bIsConnected = true;
+    if(m_pSerx->open(pszPort, 9600, SerXInterface::B_NOPARITY, "-DTR_CONTROL 1") == 0)
+        m_bIsConnected = true;
     else
-        bIsConnected = false;
+        m_bIsConnected = false;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return ERR_COMMNOLINK;
 
-    mSleeper->sleep(2000);
+    m_pSleeper->sleep(2000);
     
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Connected.");
-        mLogger->out(mLogBuffer);
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Getting shutter state.");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Connected.");
+        m_pLogger->out(m_szLogBuffer);
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Getting shutter state.");
+        m_pLogger->out(m_szLogBuffer);
     }
 
     // get the current shutter state just to check the connection, we don't care about the state for now.
-    err = getShutterState(mShutterState);
-    if(err) {
-        bIsConnected = false;
+    nErr = getShutterState(m_nShutterState);
+    if(nErr) {
+        nErr = false;
         return ERR_COMMNOLINK;
     }
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] SkyRoof init done.");
-        mLogger->out(mLogBuffer);
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] bIsConnected = %u.", bIsConnected);
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] SkyRoof init done.");
+        m_pLogger->out(m_szLogBuffer);
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] m_bIsConnected = %u.", m_bIsConnected);
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    syncDome(mCurrentAzPosition,mCurrentElPosition);
+    syncDome(m_dCurrentAzPosition,m_dCurrentElPosition);
 
     return SB_OK;
 }
@@ -92,453 +94,493 @@ int CSkyRoof::Connect(const char *szPort)
 
 void CSkyRoof::Disconnect()
 {
-    if(bIsConnected) {
-        pSerx->purgeTxRx();
-        pSerx->close();
+    if(m_bIsConnected) {
+        m_pSerx->purgeTxRx();
+        m_pSerx->close();
     }
-    bIsConnected = false;
+    m_bIsConnected = false;
 }
 
 
-int CSkyRoof::readResponse(char *respBuffer, unsigned int bufferLen)
+int CSkyRoof::readResponse(char *pszRespBuffer, unsigned int nBufferLen)
 {
-    int err = RoR_OK;
-    unsigned long nBytesRead = 0;
-    unsigned int totalBytesRead = 0;
-    char *bufPtr;
+    int nErr = RoR_OK;
+    unsigned long ulBytesRead = 0;
+    unsigned int ulTotalBytesRead = 0;
+    char *pszBufPtr;
 
-    memset(respBuffer, 0, (size_t) bufferLen);
-    bufPtr = respBuffer;
+    memset(pszRespBuffer, 0, (size_t) nBufferLen);
+    pszBufPtr = pszRespBuffer;
 
     do {
-        err = pSerx->readFile(bufPtr, 1, nBytesRead, MAX_TIMEOUT);
-        if(err) {
-            if (bDebugLog) {
-                snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile error.");
-                mLogger->out(mLogBuffer);
+        nErr = m_pSerx->readFile(pszBufPtr, 1, ulBytesRead, MAX_TIMEOUT);
+        if(nErr) {
+            if (m_bDebugLog) {
+                snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile error.");
+                m_pLogger->out(m_szLogBuffer);
             }
-            return err;
+            return nErr;
         }
-        if (nBytesRead !=1) {// timeout
-            err = RoR_BAD_CMD_RESPONSE;
-            if (bDebugLog) {
-                snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile Timeout while getting response.");
-                mLogger->out(mLogBuffer);
-                snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] nBytesRead = %lu", nBytesRead);
-                mLogger->out(mLogBuffer);
+        if (ulBytesRead !=1) {// timeout
+            nErr = RoR_BAD_CMD_RESPONSE;
+            if (m_bDebugLog) {
+                snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile Timeout while getting response.");
+                m_pLogger->out(m_szLogBuffer);
+                snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] nBytesRead = %lu", ulBytesRead);
+                m_pLogger->out(m_szLogBuffer);
             }
             break;
         }
-        totalBytesRead += nBytesRead;
-    } while (*bufPtr++ != 0x0d && totalBytesRead < bufferLen ); // \r
+        ulTotalBytesRead += ulBytesRead;
+    } while (*pszBufPtr++ != 0x0d && ulTotalBytesRead < nBufferLen ); // \r
 
-    *bufPtr = 0; //remove the \r
-    return err;
+    *pszBufPtr = 0; //remove the \r
+    return nErr;
 }
 
 
-int CSkyRoof::domeCommand(const char *cmd, char *result, int resultMaxLen)
+int CSkyRoof::domeCommand(const char *pszCmd, char *pszResult, int nResultMaxLen)
 {
-    int err = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    char szResp[SERIAL_BUFFER_SIZE];
     unsigned long  nBytesWrite;
 
-    pSerx->purgeTxRx();
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] Sending %s",cmd);
-        mLogger->out(mLogBuffer);
+    m_pSerx->purgeTxRx();
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] Sending %s",pszCmd);
+        m_pLogger->out(m_szLogBuffer);
     }
-    err = pSerx->writeFile((void *)cmd, strlen(cmd), nBytesWrite);
-    pSerx->flushTx();
-    if(err)
-        return err;
-    err = readResponse(resp, SERIAL_BUFFER_SIZE);
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", resp);
-        mLogger->out(mLogBuffer);
+    nErr = m_pSerx->writeFile((void *)pszCmd, strlen(pszCmd), nBytesWrite);
+    m_pSerx->flushTx();
+    if(nErr)
+        return nErr;
+
+    // only read the response if we expect a response.
+    if(pszResult) {
+        nErr = readResponse(szResp, SERIAL_BUFFER_SIZE);
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", szResp);
+            m_pLogger->out(m_szLogBuffer);
+        }
+        
+        if(nErr)
+            return nErr;
+        strncpy(pszResult, szResp, nResultMaxLen);
     }
 
-    if(err)
-        return err;
-
-    if(result)
-        strncpy(result, resp, resultMaxLen);
-
-    return err;
-
+    return nErr;
 }
 
 
-int CSkyRoof::getDomeAz(double &domeAz)
+int CSkyRoof::getDomeAz(double &dDomeAz)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
 
     // convert Az string to double
-    domeAz = mCurrentAzPosition;
-    return err;
+    dDomeAz = m_dCurrentAzPosition;
+    return nErr;
 }
 
-int CSkyRoof::getDomeEl(double &domeEl)
+int CSkyRoof::getDomeEl(double &dDomeEl)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    if(!mShutterOpened)
+    if(!m_bShutterOpened)
     {
-        domeEl = 0.0;
-        return err;
+        dDomeEl = 0.0;
+        return nErr;
     }
 
-    domeEl = mCurrentElPosition;
+    dDomeEl = m_dCurrentElPosition;
 
-    return err;
+    return nErr;
 }
 
 
-int CSkyRoof::getShutterState(int &state)
+int CSkyRoof::getShutterState(int &nState)
 {
-    int err = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    char szResp[SERIAL_BUFFER_SIZE];
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState]");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState]");
+        m_pLogger->out(m_szLogBuffer);
     }
-    mSleeper->sleep(CMD_DELAY);
-    err = domeCommand("Status#\r", resp,  SERIAL_BUFFER_SIZE);
-    if(err)
-        return err;
+    m_pSleeper->sleep(CMD_DELAY);
+    nErr = domeCommand("Status#\r", szResp,  SERIAL_BUFFER_SIZE);
+    if(nErr)
+        return nErr;
 
-    if(strstr(resp,"Open")) {
-        state = OPEN;
-        mShutterOpened = true;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is opened");
-            mLogger->out(mLogBuffer);
+    if(strstr(szResp, "Open")) {
+        nState = OPEN;
+        m_bShutterOpened = true;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is opened");
+            m_pLogger->out(m_szLogBuffer);
         }
-    } else if (strstr(resp,"Close")) {
-        state = CLOSED;
-        mShutterOpened = false;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is closed");
-            mLogger->out(mLogBuffer);
+    } else if (strstr(szResp, "Close")) {
+        nState = CLOSED;
+        m_bShutterOpened = false;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is closed");
+            m_pLogger->out(m_szLogBuffer);
         }
-    } else if (strstr(resp,"Safety")) {
-        state = SAFETY;
-        mShutterOpened = false;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is moving or stopped in the middle");
-            mLogger->out(mLogBuffer);
+    } else if (strstr(szResp, "Safety")) {
+        nState = SAFETY;
+        m_bShutterOpened = false;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is moving or stopped in the middle");
+            m_pLogger->out(m_szLogBuffer);
         }
     } else {
-        state = UNKNOWN;
-        mShutterOpened = false;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter state is unknown");
-            mLogger->out(mLogBuffer);
+        nState = UNKNOWN;
+        m_bShutterOpened = false;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter state is unknown");
+            m_pLogger->out(m_szLogBuffer);
         }
     }
 
-    return err;
+    return nErr;
 }
 
 
-void CSkyRoof::setDebugLog(bool enable)
+void CSkyRoof::setDebugLog(bool bEnable)
 {
-    bDebugLog = enable;
+    m_bDebugLog = bEnable;
 }
 
 
 int CSkyRoof::syncDome(double dAz, double dEl)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    mCurrentAzPosition = dAz;
-    return err;
+    m_dCurrentAzPosition = dAz;
+    return nErr;
 }
 
 int CSkyRoof::parkDome()
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    return err;
+    return nErr;
 
 }
 
 int CSkyRoof::unparkDome()
 {
-    syncDome(mCurrentAzPosition,mCurrentElPosition);
+    syncDome(m_dCurrentAzPosition,m_dCurrentElPosition);
     return 0;
 }
 
-int CSkyRoof::gotoAzimuth(double newAz)
+int CSkyRoof::gotoAzimuth(double dNewAz)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    mCurrentAzPosition = newAz;
+    m_dCurrentAzPosition = dNewAz;
 
-    return err;
+    return nErr;
 }
 
 int CSkyRoof::openShutter()
 {
-    int err = RoR_OK;
-    int status;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    int nStatus;
+    char szResp[SERIAL_BUFFER_SIZE];
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter]");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter]");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    if(!bIsConnected) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] NOT CONNECTED !!!!");
-            mLogger->out(mLogBuffer);
+    if(!m_bIsConnected) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] NOT CONNECTED !!!!");
+            m_pLogger->out(m_szLogBuffer);
         }
         return NOT_CONNECTED;
     }
 
     // get the AtPark status
-    err = getAtParkStatus(status);
-    if(err)
-        return err;
+    nErr = getAtParkStatus(nStatus);
+    if(nErr)
+        return nErr;
 
     // we can't move the roof if we're not parked
-    if (status != PARKED) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] Not parked, not moving the roof");
-            mLogger->out(mLogBuffer);
+    if (nStatus != PARKED) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] Not parked, not moving the roof");
+            m_pLogger->out(m_szLogBuffer);
         }
         return ERR_CMDFAILED;
     }
 
-    mSleeper->sleep(CMD_DELAY);
-    err = domeCommand("Open#\r", resp, SERIAL_BUFFER_SIZE);
-    if(err)
-        return err;
+    m_pSleeper->sleep(CMD_DELAY);
+    nErr = domeCommand("Open#\r", szResp, SERIAL_BUFFER_SIZE);
+    if(nErr)
+        return nErr;
 
-    if(!strstr(resp,"0#")) {
-        err = ERR_CMDFAILED;
+    if(!strstr(szResp, "0#")) {
+        nErr = ERR_CMDFAILED;
     }
 
-    return err;
+    return nErr;
 }
 
 int CSkyRoof::closeShutter()
 {
-    int err = RoR_OK;
-    int status;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    int nStatus;
+    char szResp[SERIAL_BUFFER_SIZE];
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter]");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter]");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    if(!bIsConnected) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] NOT CONNECTED !!!!");
-            mLogger->out(mLogBuffer);
+    if(!m_bIsConnected) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] NOT CONNECTED !!!!");
+            m_pLogger->out(m_szLogBuffer);
         }
         return NOT_CONNECTED;
     }
 
     // get the AtPark status
-    err = getAtParkStatus(status);
-    if(err)
-        return err;
+    nErr = getAtParkStatus(nStatus);
+    if(nErr)
+        return nErr;
 
 
     // we can't move the roof if we're not parked
-    if (status != PARKED) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] Not parked, not moving the roof");
-            mLogger->out(mLogBuffer);
+    if (nStatus != PARKED) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] Not parked, not moving the roof");
+            m_pLogger->out(m_szLogBuffer);
         }
         return ERR_CMDFAILED;
     }
 
-    mSleeper->sleep(CMD_DELAY);
-    err = domeCommand("Close#\r", resp, SERIAL_BUFFER_SIZE);
-    if(err)
-        return err;
+    m_pSleeper->sleep(CMD_DELAY);
+    nErr = domeCommand("Close#\r", szResp, SERIAL_BUFFER_SIZE);
+    if(nErr)
+        return nErr;
 
-    if(!strstr(resp,"0#")) {
-        err = ERR_CMDFAILED;
+    if(!strstr(szResp, "0#")) {
+        nErr = ERR_CMDFAILED;
     }
 
-    return err;
+    return nErr;
 }
 
 
-int CSkyRoof::isGoToComplete(bool &complete)
+int CSkyRoof::isGoToComplete(bool &bComplete)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
-    complete = true;
+    bComplete = true;
 
-    return err;
+    return nErr;
 }
 
-int CSkyRoof::isOpenComplete(bool &complete)
+int CSkyRoof::isOpenComplete(bool &bComplete)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Checking roof state");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Checking roof state");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    err = getShutterState(mShutterState);
-    if(err)
+    nErr = getShutterState(m_nShutterState);
+    if(nErr)
         return ERR_CMDFAILED;
 
-    if(mShutterState == OPEN){
-        mShutterOpened = true;
-        complete = true;
-        mCurrentElPosition = 90.0;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is opened");
-            mLogger->out(mLogBuffer);
-        }
-    }
-    else {
-        mShutterOpened = false;
-        complete = false;
-        mCurrentElPosition = 0.0;
-    }
-
-    return err;
-}
-
-int CSkyRoof::isCloseComplete(bool &complete)
-{
-    int err = RoR_OK;
-
-    if(!bIsConnected)
-        return NOT_CONNECTED;
-
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isCloseComplete] Checking roof state");
-        mLogger->out(mLogBuffer);
-    }
-
-    err = getShutterState(mShutterState);
-    if(err)
-        return ERR_CMDFAILED;
-
-    if(mShutterState == CLOSED){
-        mShutterOpened = false;
-        complete = true;
-        mCurrentElPosition = 0.0;
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is closed");
-            mLogger->out(mLogBuffer);
+    if(m_nShutterState == OPEN){
+        m_bShutterOpened = true;
+        bComplete = true;
+        m_dCurrentElPosition = 90.0;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is opened");
+            m_pLogger->out(m_szLogBuffer);
         }
     }
     else {
-        mShutterOpened = true;
-        complete = false;
-        mCurrentElPosition = 90.0;
+        m_bShutterOpened = false;
+        bComplete = false;
+        m_dCurrentElPosition = 0.0;
     }
 
-    return err;
+    return nErr;
+}
+
+int CSkyRoof::isCloseComplete(bool &bComplete)
+{
+    int nErr = RoR_OK;
+
+    if(!m_bIsConnected)
+        return NOT_CONNECTED;
+
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isCloseComplete] Checking roof state");
+        m_pLogger->out(m_szLogBuffer);
+    }
+
+    nErr = getShutterState(m_nShutterState);
+    if(nErr)
+        return ERR_CMDFAILED;
+
+    if(m_nShutterState == CLOSED){
+        m_bShutterOpened = false;
+        bComplete = true;
+        m_dCurrentElPosition = 0.0;
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is closed");
+            m_pLogger->out(m_szLogBuffer);
+        }
+    }
+    else {
+        m_bShutterOpened = true;
+        bComplete = false;
+        m_dCurrentElPosition = 90.0;
+    }
+
+    return nErr;
 }
 
 
-int CSkyRoof::isParkComplete(bool &complete)
+int CSkyRoof::isParkComplete(bool &bComplete)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    complete = true;
-    return err;
+    bComplete = true;
+    return nErr;
 }
 
-int CSkyRoof::isUnparkComplete(bool &complete)
+int CSkyRoof::isUnparkComplete(bool &bComplete)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    complete = true;
+    bComplete = true;
 
-    return err;
+    return nErr;
 }
 
-int CSkyRoof::isFindHomeComplete(bool &complete)
+int CSkyRoof::isFindHomeComplete(bool &bComplete)
 {
-    int err = RoR_OK;
+    int nErr = RoR_OK;
 
-    if(!bIsConnected)
+    if(!m_bIsConnected)
         return NOT_CONNECTED;
-    complete = true;
+    bComplete = true;
 
-    return err;
+    return nErr;
 
 }
 
 int CSkyRoof::abortCurrentCommand()
 {
 
-    int err = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    char szResp[SERIAL_BUFFER_SIZE];
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand]");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand]");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    if(!bIsConnected) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] NOT CONNECTED !!!!");
-            mLogger->out(mLogBuffer);
+    if(!m_bIsConnected) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] NOT CONNECTED !!!!");
+            m_pLogger->out(m_szLogBuffer);
         }
         return NOT_CONNECTED;
     }
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] Sending abort command.");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand] Sending abort command.");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    mSleeper->sleep(CMD_DELAY);
-    err = domeCommand("Stop#\r", resp, SERIAL_BUFFER_SIZE);
-    if(err)
-        return err;
+    m_pSleeper->sleep(CMD_DELAY);
+    nErr = domeCommand("Stop#\r", szResp, SERIAL_BUFFER_SIZE);
+    if(nErr)
+        return nErr;
 
-    if(!strstr(resp,"0#")) {
-        err = ERR_CMDFAILED;
+    if(!strstr(szResp, "0#")) {
+        nErr = ERR_CMDFAILED;
     }
 
-    return err;
+    return nErr;
+}
+
+
+int CSkyRoof::enableDewHeater(bool bEnable)
+{
+    int nErr = RoR_OK;
+	
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater]");
+        m_pLogger->out(m_szLogBuffer);
+    }
+    
+    if(!m_bIsConnected) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater] NOT CONNECTED !!!!");
+            m_pLogger->out(m_szLogBuffer);
+        }
+        return NOT_CONNECTED;
+    }
+    
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater] Sending dew heater command.");
+        m_pLogger->out(m_szLogBuffer);
+    }
+    
+    m_pSleeper->sleep(CMD_DELAY);
+    if(bEnable) {
+        nErr = domeCommand("HeaterOn#\r", NULL, SERIAL_BUFFER_SIZE);
+    }
+    else {
+        nErr = domeCommand("HeaterOff#\r", NULL, SERIAL_BUFFER_SIZE);
+    }
+    if(nErr)
+        return nErr;
+
+    m_bDewHeaterOn = bEnable;
+
+    return nErr;
+  
 }
 
 #pragma mark - Getter / Setter
@@ -546,78 +588,83 @@ int CSkyRoof::abortCurrentCommand()
 
 double CSkyRoof::getCurrentAz()
 {
-    if(bIsConnected)
-        getDomeAz(mCurrentAzPosition);
+    if(m_bIsConnected)
+        getDomeAz(m_dCurrentAzPosition);
 
-    return mCurrentAzPosition;
+    return m_dCurrentAzPosition;
 }
 
 double CSkyRoof::getCurrentEl()
 {
-    if(bIsConnected)
-        getDomeEl(mCurrentElPosition);
+    if(m_bIsConnected)
+        getDomeEl(m_dCurrentElPosition);
 
-    return mCurrentElPosition;
+    return m_dCurrentElPosition;
 }
 
 int CSkyRoof::getCurrentShutterState()
 {
-    if(bIsConnected)
-        getShutterState(mShutterState);
+    if(m_bIsConnected)
+        getShutterState(m_nShutterState);
 
-    return mShutterState;
+    return m_nShutterState;
 }
 
 int CSkyRoof::getCurrentParkStatus()
 {
-    if(bIsConnected)
-        getAtParkStatus(mAtParkStatus);
+    if(m_bIsConnected)
+        getAtParkStatus(m_nAtParkStatus);
 
-    return mAtParkStatus;
+    return m_nAtParkStatus;
 
 }
 
-int CSkyRoof::getAtParkStatus(int &status)
+int CSkyRoof::getAtParkStatus(int &nStatus)
 {
-    int err = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nErr = RoR_OK;
+    char szResp[SERIAL_BUFFER_SIZE];
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus]");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus]");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    if(!bIsConnected) {
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] NOT CONNECTED !!!!");
-            mLogger->out(mLogBuffer);
+    if(!m_bIsConnected) {
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] NOT CONNECTED !!!!");
+            m_pLogger->out(m_szLogBuffer);
         }
         return NOT_CONNECTED;
     }
 
-    if (bDebugLog) {
-        snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] Sending Parkstatus command.");
-        mLogger->out(mLogBuffer);
+    if (m_bDebugLog) {
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] Sending Parkstatus command.");
+        m_pLogger->out(m_szLogBuffer);
     }
 
-    mSleeper->sleep(CMD_DELAY);
-    err = domeCommand("Parkstatus#\r", resp, SERIAL_BUFFER_SIZE);
-    if(err)
-        return err;
+    m_pSleeper->sleep(CMD_DELAY);
+    nErr = domeCommand("Parkstatus#\r", szResp, SERIAL_BUFFER_SIZE);
+    if(nErr)
+        return nErr;
 
-    if(strstr(resp,"0#")) {
-        status = PARKED; //Parked
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] PARKED.");
-            mLogger->out(mLogBuffer);
+    if(strstr(szResp, "0#")) {
+        nStatus = PARKED; //Parked
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] PARKED.");
+            m_pLogger->out(m_szLogBuffer);
         }
     }
     else {
-        status = UNPARKED; //Parked
-        if (bDebugLog) {
-            snprintf(mLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] UNPARKED.");
-            mLogger->out(mLogBuffer);
+        nStatus = UNPARKED; //Parked
+        if (m_bDebugLog) {
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] UNPARKED.");
+            m_pLogger->out(m_szLogBuffer);
         }
     }
-    return err;
+    return nErr;
+}
+
+bool CSkyRoof::getDewHeaterStatus()
+{
+    return m_bDewHeaterOn;
 }

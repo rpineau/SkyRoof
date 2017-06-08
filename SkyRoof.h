@@ -15,7 +15,7 @@
 #include "../../licensedinterfaces/sleeperinterface.h"
 
 #define SERIAL_BUFFER_SIZE 256
-#define MAX_TIMEOUT 5000
+#define MAX_TIMEOUT 500
 #define ND_LOG_BUFFER_SIZE 256
 #define CMD_DELAY   750
 // error codes
@@ -31,30 +31,30 @@ public:
     CSkyRoof();
     ~CSkyRoof();
 
-    int        Connect(const char *szPort);
+    int         Connect(const char *szPort);
     void        Disconnect(void);
-    bool        IsConnected(void) { return bIsConnected; }
+    bool        IsConnected(void) { return m_bIsConnected; }
 
-    void        SetSerxPointer(SerXInterface *p) { pSerx = p; }
-    void        setLogger(LoggerInterface *pLogger) { mLogger = pLogger; };
-    void        setSleeper(SleeperInterface *pSleeper) { mSleeper = pSleeper; };
+    void        SetSerxPointer(SerXInterface *p) { m_pSerx = p; }
+    void        setLogger(LoggerInterface *pLogger) { m_pLogger = pLogger; };
+    void        setSleeper(SleeperInterface *pSleeper) { m_pSleeper = pSleeper; };
 
     // Dome commands
     int syncDome(double dAz, double dEl);
     int parkDome(void);
     int unparkDome(void);
-    int gotoAzimuth(double newAz);
+    int gotoAzimuth(double dNewAz);
     int openShutter();
     int closeShutter();
 
     // command complete functions
-    int isGoToComplete(bool &complete);
-    int isOpenComplete(bool &complete);
-    int isCloseComplete(bool &complete);
-    int isParkComplete(bool &complete);
-    int isUnparkComplete(bool &complete);
-    int isFindHomeComplete(bool &complete);
-    int isCalibratingComplete(bool &complete);
+    int isGoToComplete(bool &bComplete);
+    int isOpenComplete(bool &bComplete);
+    int isCloseComplete(bool &bComplete);
+    int isParkComplete(bool &bComplete);
+    int isUnparkComplete(bool &bComplete);
+    int isFindHomeComplete(bool &bComplete);
+    int isCalibratingComplete(bool &bComplete);
 
     int abortCurrentCommand();
 
@@ -65,33 +65,37 @@ public:
     int getCurrentParkStatus();
     void setDebugLog(bool enable);
 
+    int enableDewHeater(bool enable);
+    bool getDewHeaterStatus();
+    
 protected:
 
-    int             readResponse(char *respBuffer, unsigned int bufferLen);
-    int             getDomeAz(double &domeAz);
-    int             getDomeEl(double &domeEl);
-    int             getShutterState(int &state);
-    int             getAtParkStatus(int &status);
+    int             readResponse(char *pszRespBuffer, unsigned int nBufferLen);
+    int             getDomeAz(double &dDomeAz);
+    int             getDomeEl(double &dDomeEl);
+    int             getShutterState(int &nState);
+    int             getAtParkStatus(int &nStatus);
 
-    int             domeCommand(const char *cmd, char *result, int resultMaxLen);
+    int             domeCommand(const char *pszCmd, char *pszResult, int nResultMaxLen);
 
-    LoggerInterface *mLogger;
-    SleeperInterface    *mSleeper;
+    LoggerInterface *m_pLogger;
+    SleeperInterface    *m_pSleeper;
 
-    bool            bDebugLog;
+    bool            m_bDebugLog;
 
-    bool            bIsConnected;
-    bool            mShutterOpened;
+    bool            m_bIsConnected;
+    bool            m_bShutterOpened;
 
-    double          mCurrentAzPosition;
-    double          mCurrentElPosition;
+    double          m_dCurrentAzPosition;
+    double          m_dCurrentElPosition;
 
-    SerXInterface   *pSerx;
+    SerXInterface   *m_pSerx;
 
-    int             mShutterState;
-    int             mAtParkStatus;
-
-    char            mLogBuffer[ND_LOG_BUFFER_SIZE];
+    int             m_nShutterState;
+    int             m_nAtParkStatus;
+    bool            m_bDewHeaterOn;
+    
+    char            m_szLogBuffer[ND_LOG_BUFFER_SIZE];
 };
 
 #endif
