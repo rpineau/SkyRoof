@@ -40,7 +40,7 @@ CSkyRoof::~CSkyRoof()
 
 }
 
-int CSkyRoof::Connect(const char *szPort)
+int CSkyRoof::Connect(const char *pszPort)
 {
     int nErr;
 
@@ -50,12 +50,12 @@ int CSkyRoof::Connect(const char *szPort)
     }
 
     if (m_bDebugLog) {
-        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Trying to connect to %s.", szPort);
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::Connect] Trying to connect to %s.", pszPort);
         m_pLogger->out(m_szLogBuffer);
     }
 
     // 9600 8N1
-    if(m_pSerx->open(szPort, 9600, SerXInterface::B_NOPARITY, "-DTR_CONTROL 1") == 0)
+    if(m_pSerx->open(pszPort, 9600, SerXInterface::B_NOPARITY, "-DTR_CONTROL 1") == 0)
         m_bIsConnected = true;
     else
         m_bIsConnected = false;
@@ -106,14 +106,14 @@ int CSkyRoof::readResponse(char *pszRespBuffer, unsigned int nBufferLen)
 {
     int nErr = RoR_OK;
     unsigned long ulBytesRead = 0;
-    unsigned int ilTotalBytesRead = 0;
-    char *bufPtr;
+    unsigned int ulTotalBytesRead = 0;
+    char *pszBufPtr;
 
     memset(pszRespBuffer, 0, (size_t) nBufferLen);
-    bufPtr = pszRespBuffer;
+    pszBufPtr = pszRespBuffer;
 
     do {
-        nErr = m_pSerx->readFile(bufPtr, 1, ulBytesRead, MAX_TIMEOUT);
+        nErr = m_pSerx->readFile(pszBufPtr, 1, ulBytesRead, MAX_TIMEOUT);
         if(nErr) {
             if (m_bDebugLog) {
                 snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::readResponse] readFile error.");
@@ -131,48 +131,48 @@ int CSkyRoof::readResponse(char *pszRespBuffer, unsigned int nBufferLen)
             }
             break;
         }
-        ilTotalBytesRead += ulBytesRead;
-    } while (*bufPtr++ != 0x0d && ilTotalBytesRead < nBufferLen ); // \r
+        ulTotalBytesRead += ulBytesRead;
+    } while (*pszBufPtr++ != 0x0d && ulTotalBytesRead < nBufferLen ); // \r
 
-    *bufPtr = 0; //remove the \r
+    *pszBufPtr = 0; //remove the \r
     return nErr;
 }
 
 
-int CSkyRoof::domeCommand(const char *cmd, char *result, int resultMaxLen)
+int CSkyRoof::domeCommand(const char *pszCmd, char *pszResult, int nResultMaxLen)
 {
     int nErr = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    char szResp[SERIAL_BUFFER_SIZE];
     unsigned long  nBytesWrite;
 
     m_pSerx->purgeTxRx();
     if (m_bDebugLog) {
-        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] Sending %s",cmd);
+        snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] Sending %s",pszCmd);
         m_pLogger->out(m_szLogBuffer);
     }
-    nErr = m_pSerx->writeFile((void *)cmd, strlen(cmd), nBytesWrite);
+    nErr = m_pSerx->writeFile((void *)pszCmd, strlen(pszCmd), nBytesWrite);
     m_pSerx->flushTx();
     if(nErr)
         return nErr;
 
     // only read the response if we expect a response.
-    if(result) {
-        nErr = readResponse(resp, SERIAL_BUFFER_SIZE);
+    if(pszResult) {
+        nErr = readResponse(szResp, SERIAL_BUFFER_SIZE);
         if (m_bDebugLog) {
-            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", resp);
+            snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::domeCommand] response = %s", szResp);
             m_pLogger->out(m_szLogBuffer);
         }
         
         if(nErr)
             return nErr;
-        strncpy(result, resp, resultMaxLen);
+        strncpy(pszResult, szResp, nResultMaxLen);
     }
 
     return nErr;
 }
 
 
-int CSkyRoof::getDomeAz(double &domeAz)
+int CSkyRoof::getDomeAz(double &dDomeAz)
 {
     int nErr = RoR_OK;
 
@@ -181,11 +181,11 @@ int CSkyRoof::getDomeAz(double &domeAz)
 
 
     // convert Az string to double
-    domeAz = m_dCurrentAzPosition;
+    dDomeAz = m_dCurrentAzPosition;
     return nErr;
 }
 
-int CSkyRoof::getDomeEl(double &domeEl)
+int CSkyRoof::getDomeEl(double &dDomeEl)
 {
     int nErr = RoR_OK;
 
@@ -194,20 +194,20 @@ int CSkyRoof::getDomeEl(double &domeEl)
 
     if(!m_bShutterOpened)
     {
-        domeEl = 0.0;
+        dDomeEl = 0.0;
         return nErr;
     }
 
-    domeEl = m_dCurrentElPosition;
+    dDomeEl = m_dCurrentElPosition;
 
     return nErr;
 }
 
 
-int CSkyRoof::getShutterState(int &state)
+int CSkyRoof::getShutterState(int &nState)
 {
     int nErr = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    char szResp[SERIAL_BUFFER_SIZE];
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
@@ -217,33 +217,33 @@ int CSkyRoof::getShutterState(int &state)
         m_pLogger->out(m_szLogBuffer);
     }
     m_pSleeper->sleep(CMD_DELAY);
-    nErr = domeCommand("Status#\r", resp,  SERIAL_BUFFER_SIZE);
+    nErr = domeCommand("Status#\r", szResp,  SERIAL_BUFFER_SIZE);
     if(nErr)
         return nErr;
 
-    if(strstr(resp,"Open")) {
-        state = OPEN;
+    if(strstr(szResp, "Open")) {
+        nState = OPEN;
         m_bShutterOpened = true;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is opened");
             m_pLogger->out(m_szLogBuffer);
         }
-    } else if (strstr(resp,"Close")) {
-        state = CLOSED;
+    } else if (strstr(szResp, "Close")) {
+        nState = CLOSED;
         m_bShutterOpened = false;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is closed");
             m_pLogger->out(m_szLogBuffer);
         }
-    } else if (strstr(resp,"Safety")) {
-        state = SAFETY;
+    } else if (strstr(szResp, "Safety")) {
+        nState = SAFETY;
         m_bShutterOpened = false;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter is moving or stopped in the middle");
             m_pLogger->out(m_szLogBuffer);
         }
     } else {
-        state = UNKNOWN;
+        nState = UNKNOWN;
         m_bShutterOpened = false;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getShutterState] Shutter state is unknown");
@@ -289,14 +289,14 @@ int CSkyRoof::unparkDome()
     return 0;
 }
 
-int CSkyRoof::gotoAzimuth(double newAz)
+int CSkyRoof::gotoAzimuth(double dNewAz)
 {
     int nErr = RoR_OK;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    m_dCurrentAzPosition = newAz;
+    m_dCurrentAzPosition = dNewAz;
 
     return nErr;
 }
@@ -304,8 +304,8 @@ int CSkyRoof::gotoAzimuth(double newAz)
 int CSkyRoof::openShutter()
 {
     int nErr = RoR_OK;
-    int status;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nStatus;
+    char szResp[SERIAL_BUFFER_SIZE];
 
     if (m_bDebugLog) {
         snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter]");
@@ -321,12 +321,12 @@ int CSkyRoof::openShutter()
     }
 
     // get the AtPark status
-    nErr = getAtParkStatus(status);
+    nErr = getAtParkStatus(nStatus);
     if(nErr)
         return nErr;
 
     // we can't move the roof if we're not parked
-    if (status != PARKED) {
+    if (nStatus != PARKED) {
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::openShutter] Not parked, not moving the roof");
             m_pLogger->out(m_szLogBuffer);
@@ -335,11 +335,11 @@ int CSkyRoof::openShutter()
     }
 
     m_pSleeper->sleep(CMD_DELAY);
-    nErr = domeCommand("Open#\r", resp, SERIAL_BUFFER_SIZE);
+    nErr = domeCommand("Open#\r", szResp, SERIAL_BUFFER_SIZE);
     if(nErr)
         return nErr;
 
-    if(!strstr(resp,"0#")) {
+    if(!strstr(szResp, "0#")) {
         nErr = ERR_CMDFAILED;
     }
 
@@ -349,8 +349,8 @@ int CSkyRoof::openShutter()
 int CSkyRoof::closeShutter()
 {
     int nErr = RoR_OK;
-    int status;
-    char resp[SERIAL_BUFFER_SIZE];
+    int nStatus;
+    char szResp[SERIAL_BUFFER_SIZE];
 
     if (m_bDebugLog) {
         snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter]");
@@ -366,13 +366,13 @@ int CSkyRoof::closeShutter()
     }
 
     // get the AtPark status
-    nErr = getAtParkStatus(status);
+    nErr = getAtParkStatus(nStatus);
     if(nErr)
         return nErr;
 
 
     // we can't move the roof if we're not parked
-    if (status != PARKED) {
+    if (nStatus != PARKED) {
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::closeShutter] Not parked, not moving the roof");
             m_pLogger->out(m_szLogBuffer);
@@ -381,11 +381,11 @@ int CSkyRoof::closeShutter()
     }
 
     m_pSleeper->sleep(CMD_DELAY);
-    nErr = domeCommand("Close#\r", resp, SERIAL_BUFFER_SIZE);
+    nErr = domeCommand("Close#\r", szResp, SERIAL_BUFFER_SIZE);
     if(nErr)
         return nErr;
 
-    if(!strstr(resp,"0#")) {
+    if(!strstr(szResp, "0#")) {
         nErr = ERR_CMDFAILED;
     }
 
@@ -393,18 +393,18 @@ int CSkyRoof::closeShutter()
 }
 
 
-int CSkyRoof::isGoToComplete(bool &complete)
+int CSkyRoof::isGoToComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
-    complete = true;
+    bComplete = true;
 
     return nErr;
 }
 
-int CSkyRoof::isOpenComplete(bool &complete)
+int CSkyRoof::isOpenComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
@@ -422,7 +422,7 @@ int CSkyRoof::isOpenComplete(bool &complete)
 
     if(m_nShutterState == OPEN){
         m_bShutterOpened = true;
-        complete = true;
+        bComplete = true;
         m_dCurrentElPosition = 90.0;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is opened");
@@ -431,14 +431,14 @@ int CSkyRoof::isOpenComplete(bool &complete)
     }
     else {
         m_bShutterOpened = false;
-        complete = false;
+        bComplete = false;
         m_dCurrentElPosition = 0.0;
     }
 
     return nErr;
 }
 
-int CSkyRoof::isCloseComplete(bool &complete)
+int CSkyRoof::isCloseComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
@@ -456,7 +456,7 @@ int CSkyRoof::isCloseComplete(bool &complete)
 
     if(m_nShutterState == CLOSED){
         m_bShutterOpened = false;
-        complete = true;
+        bComplete = true;
         m_dCurrentElPosition = 0.0;
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::isOpenComplete] Roof is closed");
@@ -465,7 +465,7 @@ int CSkyRoof::isCloseComplete(bool &complete)
     }
     else {
         m_bShutterOpened = true;
-        complete = false;
+        bComplete = false;
         m_dCurrentElPosition = 90.0;
     }
 
@@ -473,36 +473,36 @@ int CSkyRoof::isCloseComplete(bool &complete)
 }
 
 
-int CSkyRoof::isParkComplete(bool &complete)
+int CSkyRoof::isParkComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    complete = true;
+    bComplete = true;
     return nErr;
 }
 
-int CSkyRoof::isUnparkComplete(bool &complete)
+int CSkyRoof::isUnparkComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    complete = true;
+    bComplete = true;
 
     return nErr;
 }
 
-int CSkyRoof::isFindHomeComplete(bool &complete)
+int CSkyRoof::isFindHomeComplete(bool &bComplete)
 {
     int nErr = RoR_OK;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
-    complete = true;
+    bComplete = true;
 
     return nErr;
 
@@ -512,7 +512,7 @@ int CSkyRoof::abortCurrentCommand()
 {
 
     int nErr = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    char szResp[SERIAL_BUFFER_SIZE];
 
     if (m_bDebugLog) {
         snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::abortCurrentCommand]");
@@ -533,11 +533,11 @@ int CSkyRoof::abortCurrentCommand()
     }
 
     m_pSleeper->sleep(CMD_DELAY);
-    nErr = domeCommand("Stop#\r", resp, SERIAL_BUFFER_SIZE);
+    nErr = domeCommand("Stop#\r", szResp, SERIAL_BUFFER_SIZE);
     if(nErr)
         return nErr;
 
-    if(!strstr(resp,"0#")) {
+    if(!strstr(szResp, "0#")) {
         nErr = ERR_CMDFAILED;
     }
 
@@ -545,11 +545,10 @@ int CSkyRoof::abortCurrentCommand()
 }
 
 
-int CSkyRoof::enableDewHeater(bool enable)
+int CSkyRoof::enableDewHeater(bool bEnable)
 {
     int nErr = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
-    
+	
     if (m_bDebugLog) {
         snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::enableDewHeater]");
         m_pLogger->out(m_szLogBuffer);
@@ -569,7 +568,7 @@ int CSkyRoof::enableDewHeater(bool enable)
     }
     
     m_pSleeper->sleep(CMD_DELAY);
-    if(enable) {
+    if(bEnable) {
         nErr = domeCommand("HeaterOn#\r", NULL, SERIAL_BUFFER_SIZE);
     }
     else {
@@ -578,7 +577,7 @@ int CSkyRoof::enableDewHeater(bool enable)
     if(nErr)
         return nErr;
 
-    m_bDewHeaterOn = enable;
+    m_bDewHeaterOn = bEnable;
 
     return nErr;
   
@@ -620,10 +619,10 @@ int CSkyRoof::getCurrentParkStatus()
 
 }
 
-int CSkyRoof::getAtParkStatus(int &status)
+int CSkyRoof::getAtParkStatus(int &nStatus)
 {
     int nErr = RoR_OK;
-    char resp[SERIAL_BUFFER_SIZE];
+    char szResp[SERIAL_BUFFER_SIZE];
 
     if (m_bDebugLog) {
         snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus]");
@@ -644,19 +643,19 @@ int CSkyRoof::getAtParkStatus(int &status)
     }
 
     m_pSleeper->sleep(CMD_DELAY);
-    nErr = domeCommand("Parkstatus#\r", resp, SERIAL_BUFFER_SIZE);
+    nErr = domeCommand("Parkstatus#\r", szResp, SERIAL_BUFFER_SIZE);
     if(nErr)
         return nErr;
 
-    if(strstr(resp,"0#")) {
-        status = PARKED; //Parked
+    if(strstr(szResp, "0#")) {
+        nStatus = PARKED; //Parked
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] PARKED.");
             m_pLogger->out(m_szLogBuffer);
         }
     }
     else {
-        status = UNPARKED; //Parked
+        nStatus = UNPARKED; //Parked
         if (m_bDebugLog) {
             snprintf(m_szLogBuffer,ND_LOG_BUFFER_SIZE,"[CSkyRoof::getAtParkStatus] UNPARKED.");
             m_pLogger->out(m_szLogBuffer);
