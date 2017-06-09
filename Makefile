@@ -19,7 +19,7 @@ $(TARGET_LIB): $(OBJS)
 
 $(SRCS:.cpp=.d):%.d:%.cpp
 	$(CC) $(CFLAGS) $(CPPFLAGS) -MM $< >$@
-	$(STRIP) $@ 2>&1 >/dev/null || true
+	$(STRIP) $@ >/dev/null 2>&1  || true
 
 include $(SRCS:.cpp=.d)
 
