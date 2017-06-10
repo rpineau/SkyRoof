@@ -134,7 +134,9 @@ int CSkyRoof::readResponse(char *pszRespBuffer, unsigned int nBufferLen)
         ulTotalBytesRead += ulBytesRead;
     } while (*pszBufPtr++ != 0x0d && ulTotalBytesRead < nBufferLen ); // \r
 
-    *pszBufPtr = 0; //remove the \r
+    if(ulTotalBytesRead)
+        *(pszBufPtr-1) = 0; //remove the \r
+
     return nErr;
 }
 
