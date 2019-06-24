@@ -24,10 +24,13 @@ fi
 
 if [ -d "$TheSkyX_Path/Resources/Common/PlugIns64" ]; then
 	PLUGINS_DIR="PlugIns64"
+else [ -d "$TheSkyX_Path/Resources/Common/PlugInsARM32" ]; then
+	PLUGINS_DIR="PlugInsARM32"
+else [ -d "$TheSkyX_Path/Resources/Common/PlugInsARM64" ]; then
+	PLUGINS_DIR="PlugInsARM32"
 else
 	PLUGINS_DIR="PlugIns"
 fi
-
 
 cp "./domelist SkyRoof.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
 cp "./libSkyRoof.so" "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/"
