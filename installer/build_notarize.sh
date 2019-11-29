@@ -6,7 +6,7 @@ cp "../SkyRoof.png" ROOT/tmp/SkyRoof_X2/
 cp "../domelist SkyRoof.txt" ROOT/tmp/SkyRoof_X2/
 cp "../build/Release/libSkyRoof.dylib" ROOT/tmp/SkyRoof_X2/
 
-PACKAGE_NAME="DomePro_X2.pkg"
+PACKAGE_NAME="SkyRoof_X2.pkg"
 BUNDLE_NAME="org.rti-zone.SkyRoofX2"
 
 if [ ! -z "$installer_signature" ]; then
