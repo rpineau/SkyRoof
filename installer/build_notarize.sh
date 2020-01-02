@@ -1,13 +1,18 @@
 #!/bin/bash
 
+PACKAGE_NAME="SkyRoof_X2.pkg"
+BUNDLE_NAME="org.rti-zone.SkyRoofX2"
+
+if [ ! -z "$app_id_signature" ]; then
+    codesign -f -s "$app_id_signature" --verbose ../build/Release/libSkyRoof.dylib
+fi
+
 mkdir -p ROOT/tmp/SkyRoof_X2/
 cp "../SkyRoof.ui" ROOT/tmp/SkyRoof_X2/
 cp "../SkyRoof.png" ROOT/tmp/SkyRoof_X2/
 cp "../domelist SkyRoof.txt" ROOT/tmp/SkyRoof_X2/
 cp "../build/Release/libSkyRoof.dylib" ROOT/tmp/SkyRoof_X2/
 
-PACKAGE_NAME="SkyRoof_X2.pkg"
-BUNDLE_NAME="org.rti-zone.SkyRoofX2"
 
 if [ ! -z "$installer_signature" ]; then
 	# signed package using env variable installer_signature
