@@ -13,21 +13,35 @@ TheSkyX_Path=$(<"$TheSkyX_Install")
 echo "Installing to $TheSkyX_Path"
 
 if [ ! -d "$TheSkyX_Path" ]; then
-    echo TheSkyX Install dir not exist
+    echo "Coudln't find TheSkyX application location"
     exit 1
 fi
 
+if [ -d "$TheSkyX_Path/PlugIns" ]; then
+	PLUGINS_DIR="$TheSkyX_Path/PlugIns"
+elif [ -d "$TheSkyX_Path/Resources/Common/PlugIns64" ]; then
+	PLUGINS_DIR="$TheSkyX_Path/Resources/Common/PlugIns64"
+else
+	PLUGINS_DIR="$TheSkyX_Path/Resources/Common/PlugIns"
+fi
+
+echo "Installing in $PLUGINS_DIR/DomePlugIns/"
+
 cp "/tmp/SkyRoof_X2/domelist SkyRoof.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
-cp "/tmp/SkyRoof_X2/SkyRoof.ui" "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/"
-cp "/tmp/SkyRoof_X2/SkyRoof.png" "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/"
-cp "/tmp/SkyRoof_X2/libSkyRoof.dylib" "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/"
+if [ "$?" -ne "0" ]; then exit 1; fi
+cp "/tmp/SkyRoof_X2/SkyRoof.ui" "$PLUGINS_DIR/DomePlugIns/"
+if [ "$?" -ne "0" ]; then exit 1; fi
+cp "/tmp/SkyRoof_X2/SkyRoof.png" "$PLUGINS_DIR/DomePlugIns/"
+if [ "$?" -ne "0" ]; then exit 1; fi
+cp "/tmp/SkyRoof_X2/libSkyRoof.dylib" "$PLUGINS_DIR/DomePlugIns/"
+if [ "$?" -ne "0" ]; then exit 1; fi
 
 app_owner=`/usr/bin/stat -n -f "%u" "$TheSkyX_Path" | xargs id -n -u`
 if [ ! -z "$app_owner" ]; then
 	chown $app_owner "$TheSkyX_Path/Resources/Common/Miscellaneous Files/domelist SkyRoof.txt"
-	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/SkyRoof.ui"
-	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/SkyRoof.png"
-	chown $app_owner "$TheSkyX_Path/Resources/Common/PlugIns/DomePlugIns/libSkyRoof.dylib"
+	chown $app_owner "$PLUGINS_DIR/DomePlugIns/SkyRoof.ui"
+	chown $app_owner "$PLUGINS_DIR/DomePlugIns/SkyRoof.png"
+	chown $app_owner "$PLUGINS_DIR/DomePlugIns/libSkyRoof.dylib"
 fi
 
 rm -rf /tmp/SkyRoof_X2
