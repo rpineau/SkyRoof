@@ -29,10 +29,16 @@ echo "Installing in $PLUGINS_DIR/DomePlugIns/"
 
 cp "/tmp/SkyRoof_X2/domelist SkyRoof.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/SkyRoof.ui"
 cp "/tmp/SkyRoof_X2/SkyRoof.ui" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/SkyRoof.png"
 cp "/tmp/SkyRoof_X2/SkyRoof.png" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/libSkyRoof.dylib"
 cp "/tmp/SkyRoof_X2/libSkyRoof.dylib" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
 
