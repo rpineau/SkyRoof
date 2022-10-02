@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		932CF7D41E5F68D600E04860 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 932CF7D31E5F68D600E04860 /* CoreFoundation.framework */; };
 		932CF7D61E5F68DF00E04860 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 932CF7D51E5F68DF00E04860 /* IOKit.framework */; };
+		93349DA428E9FCF40070D0DC /* StopWatch.h in Headers */ = {isa = PBXBuildFile; fileRef = 93349D9C28E9FCF30070D0DC /* StopWatch.h */; };
 		933C74191E5F6BA2007E5CB3 /* SkyRoof.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 933C74131E5F6BA2007E5CB3 /* SkyRoof.cpp */; };
 		933C741A1E5F6BA2007E5CB3 /* SkyRoof.h in Headers */ = {isa = PBXBuildFile; fileRef = 933C74141E5F6BA2007E5CB3 /* SkyRoof.h */; };
 		933C741B1E5F6BA2007E5CB3 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 933C74151E5F6BA2007E5CB3 /* main.cpp */; };
@@ -21,6 +22,7 @@
 		932CF7BE1E5F637D00E04860 /* libSkyRoof.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libSkyRoof.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		932CF7D31E5F68D600E04860 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		932CF7D51E5F68DF00E04860 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		93349D9C28E9FCF30070D0DC /* StopWatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StopWatch.h; sourceTree = "<group>"; };
 		933C74131E5F6BA2007E5CB3 /* SkyRoof.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SkyRoof.cpp; sourceTree = "<group>"; };
 		933C74141E5F6BA2007E5CB3 /* SkyRoof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SkyRoof.h; sourceTree = "<group>"; };
 		933C74151E5F6BA2007E5CB3 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 		932CF7C51E5F638B00E04860 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				93349D9C28E9FCF30070D0DC /* StopWatch.h */,
 				933C74131E5F6BA2007E5CB3 /* SkyRoof.cpp */,
 				933C74141E5F6BA2007E5CB3 /* SkyRoof.h */,
 				933C74151E5F6BA2007E5CB3 /* main.cpp */,
@@ -90,6 +93,7 @@
 			files = (
 				933C741A1E5F6BA2007E5CB3 /* SkyRoof.h in Headers */,
 				933C741C1E5F6BA2007E5CB3 /* main.h in Headers */,
+				93349DA428E9FCF40070D0DC /* StopWatch.h in Headers */,
 				933C741E1E5F6BA2007E5CB3 /* x2dome.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

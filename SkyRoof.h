@@ -14,12 +14,30 @@
 #include "../../licensedinterfaces/loggerinterface.h"
 #include "../../licensedinterfaces/sleeperinterface.h"
 
+// C++ includes
+#include <string>
+#include <vector>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <chrono>
+#include <thread>
+#include <ctime>
+
+#include "StopWatch.h"
+
+// #define PLUGIN_DEBUG 3
+#define PLUGIN_VERSION  1.2
+
 #define SERIAL_BUFFER_SIZE 256
 #define MAX_TIMEOUT 500
-#define ND_LOG_BUFFER_SIZE 256
-#define CMD_DELAY   750
+#define MAX_READ_WAIT_TIMEOUT 25
+#define NB_RX_WAIT 10
+
+#define CMD_DELAY   1000
 // error codes
-enum SkyRoofErrors {RoR_OK=0, NOT_CONNECTED, RoR_CANT_CONNECT, RoR_BAD_CMD_RESPONSE, COMMAND_FAILED};
+enum SkyRoofErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
 
 // Error code
 enum SkyRoofShutterState {OPEN=1, OPENING, CLOSED, CLOSING, SAFETY, SHUTTER_ERROR, UNKNOWN};
@@ -36,8 +54,6 @@ public:
     bool        IsConnected(void) { return m_bIsConnected; }
 
     void        SetSerxPointer(SerXInterface *p) { m_pSerx = p; }
-    void        setLogger(LoggerInterface *pLogger) { m_pLogger = pLogger; };
-    void        setSleeper(SleeperInterface *pSleeper) { m_pSleeper = pSleeper; };
 
     // Dome commands
     int syncDome(double dAz, double dEl);
@@ -63,26 +79,26 @@ public:
 
     int getCurrentShutterState();
     int getCurrentParkStatus();
-    void setDebugLog(bool enable);
 
     int enableDewHeater(bool enable);
     bool getDewHeaterStatus();
     
 protected:
 
-    int             readResponse(char *pszRespBuffer, unsigned int nBufferLen);
+    int             domeCommand(const std::string sCmd, std::string &sResp, int nTimeout = MAX_TIMEOUT);
+    int             readResponse(std::string &sResp, int nTimeout = MAX_TIMEOUT);
+
     int             getDomeAz(double &dDomeAz);
     int             getDomeEl(double &dDomeEl);
     int             getShutterState(int &nState);
     int             getAtParkStatus(int &nStatus);
 
-    int             domeCommand(const char *pszCmd, char *pszResult, int nResultMaxLen);
+    std::string&    trim(std::string &str, const std::string &filter );
+    std::string&    ltrim(std::string &str, const std::string &filter);
+    std::string&    rtrim(std::string &str, const std::string &filter);
+    std::string     findField(std::vector<std::string> &svFields, const std::string& token);
 
-    LoggerInterface *m_pLogger;
-    SleeperInterface    *m_pSleeper;
-
-    bool            m_bDebugLog;
-
+    
     bool            m_bIsConnected;
     bool            m_bShutterOpened;
 
@@ -95,7 +111,14 @@ protected:
     int             m_nAtParkStatus;
     bool            m_bDewHeaterOn;
     
-    char            m_szLogBuffer[ND_LOG_BUFFER_SIZE];
+    CStopWatch      m_CmdTimer;
+#ifdef PLUGIN_DEBUG
+    // timestamp for logs
+    const std::string getTimeStamp();
+    std::ofstream m_sLogFile;
+    std::string m_sLogfilePath;
+#endif
+
 };
 
 #endif

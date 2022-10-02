@@ -14,8 +14,6 @@ class MutexInterface;
 class BasicIniUtilInterface;
 class TickCountInterface;
 
-#define DRIVER_VERSION      1.1
-
 #define PARENT_KEY			"SkyRoof"
 #define CHILD_KEY_PORTNAME	"PortName"
 
@@ -142,7 +140,6 @@ private:
 	int         m_nPrivateISIndex;
 	bool        m_bLinked;
     CSkyRoof    m_SkyRoof;
-    char        mLogBuffer[LOG_BUFFER_SIZE];
     int			m_nDewHeaterState;
 
 };
