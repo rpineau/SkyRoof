@@ -398,9 +398,13 @@ int CSkyRoof::openShutter()
 
     // get the AtPark status
     nErr = getAtParkStatus(nStatus);
-    if(nErr)
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [openShutter]  getAtParkStatus Error : " << nErr << std::endl;
+        m_sLogFile.flush();
+#endif
         return nErr;
-
+    }
     // we can't move the roof if we're not parked
     if (nStatus != PARKED) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -411,13 +415,18 @@ int CSkyRoof::openShutter()
     }
 
     nErr = domeCommand("Open#\r", sResp);
-    if(nErr)
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [openShutter] Error : " << nErr << std::endl;
+        m_sLogFile.flush();
+#endif
         return nErr;
-
+    }
+/*
     if(sResp.find("0#") == -1)  {
         nErr = ERR_CMDFAILED;
     }
-
+*/
     return nErr;
 }
 
@@ -438,9 +447,13 @@ int CSkyRoof::closeShutter()
 
     // get the AtPark status
     nErr = getAtParkStatus(nStatus);
-    if(nErr)
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [closeShutter]  getAtParkStatus Error : " << nErr << std::endl;
+        m_sLogFile.flush();
+#endif
         return nErr;
-
+    }
 
     // we can't move the roof if we're not parked
     if (nStatus != PARKED) {
@@ -452,13 +465,19 @@ int CSkyRoof::closeShutter()
     }
 
     nErr = domeCommand("Close#\r", sResp);
-    if(nErr)
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [closeShutter] Error : " << nErr << std::endl;
+        m_sLogFile.flush();
+#endif
         return nErr;
-
-    if(sResp.find("0#") == -1)  {
-        nErr = ERR_CMDFAILED;
     }
 
+/*
+    if(sResp.find("1#") == -1)  {
+        nErr = ERR_CMDFAILED;
+    }
+*/
     return nErr;
 }
 
@@ -487,8 +506,10 @@ int CSkyRoof::isOpenComplete(bool &bComplete)
 #endif
 
     nErr = getShutterState(m_nShutterState);
-    if(nErr)
-        return ERR_CMDFAILED;
+    if(nErr) {
+        bComplete = false;
+        return PLUGIN_OK; // will get status on the next round
+    }
 
     if(m_nShutterState == OPEN) {
         m_bShutterOpened = true;
@@ -519,11 +540,11 @@ int CSkyRoof::isCloseComplete(bool &bComplete)
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [isCloseComplete] called." << std::endl;
     m_sLogFile.flush();
 #endif
-
     nErr = getShutterState(m_nShutterState);
-    if(nErr)
-        return ERR_CMDFAILED;
-
+    if(nErr) {
+        bComplete = false;
+        return PLUGIN_OK; // will get status on the next round
+    }
     if(m_nShutterState == CLOSED){
         m_bShutterOpened = false;
         bComplete = true;
@@ -599,13 +620,9 @@ int CSkyRoof::abortCurrentCommand()
     m_sLogFile.flush();
 #endif
 
-    nErr = domeCommand("Stop#\r", sResp);
+    nErr = domeCommand("Stop#\r", sResp, 0);
     if(nErr)
         return nErr;
-
-    if(sResp.find("0#") == -1)  {
-        nErr = ERR_CMDFAILED;
-    }
 
     return nErr;
 }
